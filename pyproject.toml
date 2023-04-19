@@ -24,7 +24,9 @@ dependencies = [
 ]
 
 [project.urls]
-"GitHub Project" = "https://github.com/SEU-ALLEN-codebase/vaa3d-python"
+"GitHub Project" = "https://github.com/SEU-ALLEN-codebase/v3d-py-helper"
+"Documentation" = "https://SEU-ALLEN-codebase.github.io/v3d-py-helper"
+"Vaa3D Source" = "https://github.com/Vaa3D/v3d_external"
 
 [project.optional-dependencies]
 docs = [ "pdoc" ]
