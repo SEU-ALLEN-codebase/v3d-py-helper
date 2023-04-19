@@ -5,6 +5,8 @@ cimport cython
 import numpy as np
 cimport numpy as np
 import sys
+
+from cpython.bytearray cimport PyByteArray_AsString
 from libc.stdio cimport FILE, fopen, fread, fclose, fwrite
 
 
@@ -60,8 +62,8 @@ cdef class PBD:
     @cython.wraparound(False)
     cdef long long decompress_pbd8(self, long long look_ahead):
         cdef:
-            unsigned char* decomp = <unsigned char*>&self.decompression_buffer[0]
-            unsigned char* comp = <unsigned char*>&self.compression_buffer[0]
+            unsigned char* decomp = <unsigned char*>PyByteArray_AsString(self.decompression_buffer)
+            unsigned char* comp = <unsigned char*>PyByteArray_AsString(self.compression_buffer)
             long long cp = self.compression_pos, dp = self.decompression_pos
             unsigned char count, shift, carry
             char delta
@@ -100,8 +102,8 @@ cdef class PBD:
     @cython.wraparound(False)
     cdef long long decompress_pbd16(self, long long look_ahead):
         cdef:
-            unsigned char * decomp = <unsigned char *> &self.decompression_buffer[0]
-            unsigned char * comp = <unsigned char *> &self.compression_buffer[0]
+            unsigned char * decomp = <unsigned char *> PyByteArray_AsString(self.decompression_buffer)
+            unsigned char * comp = <unsigned char *> PyByteArray_AsString(self.compression_buffer)
             long long cp = self.compression_pos, dp = self.decompression_pos
             unsigned char count, i
             char delta, shift
@@ -283,8 +285,8 @@ cdef class PBD:
         cdef:
             unsigned char cur_val, prior_val, retest
             unsigned char[96] dbuffer
-            unsigned char * decomp = <unsigned char *> &self.decompression_buffer[0]
-            unsigned char * comp = <unsigned char *> &self.compression_buffer[0]
+            unsigned char * decomp = <unsigned char *> PyByteArray_AsString(self.decompression_buffer)
+            unsigned char * comp = <unsigned char *> PyByteArray_AsString(self.compression_buffer)
             short delta
             long long active_literal_index = -1, cur_dp, cp = 0, dp = 0
             double re_efficiency, df_efficiency
@@ -348,8 +350,8 @@ cdef class PBD:
     @cython.cdivision(True)
     cdef long long compress_pbd16(self):
         cdef:
-            unsigned char * decomp = <unsigned char *> &self.decompression_buffer[0]
-            unsigned char * comp = <unsigned char *> &self.compression_buffer[0]
+            unsigned char * decomp = <unsigned char *> PyByteArray_AsString(self.decompression_buffer)
+            unsigned char * comp = <unsigned char *> PyByteArray_AsString(self.compression_buffer)
             unsigned char retest, carry, i = 0
             char shift
             unsigned char* pb
@@ -483,6 +485,7 @@ cdef class PBD:
                 compression_size = self.compress_pbd16()
             else:
                 raise Exception("Invalid datatype.")
-            assert fwrite(<void*>&self.compression_buffer[0], compression_size, 1, f) == 1, "Buffer saving failed."
+            assert fwrite(<void*>PyByteArray_AsString(self.compression_buffer), compression_size, 1, f) == 1, \
+                "Buffer saving failed."
         finally:
             fclose(f)
