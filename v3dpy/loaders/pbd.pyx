@@ -248,7 +248,7 @@ cdef class PBD:
             raise Exception("Fail to open file for reading.")
         try:
             header = bytearray(HEADER_SIZE)
-            fread(<void*>&header[0], HEADER_SIZE, 1, f)
+            fread(PyByteArray_AsString(header), HEADER_SIZE, 1, f)
             assert header.find(FORMAT_KEY) == 0, "Format key loading failed."
             header = header[len(FORMAT_KEY):]
             endian = '<' if header[:1] == LITTLE else '>'
@@ -266,7 +266,7 @@ cdef class PBD:
                 current_read_bytes = min(remaining_bytes, self.read_step_size_bytes,
                                          (self.total_read_bytes // channel_len + 1) *
                                          channel_len - self.total_read_bytes)
-                fread(<void*>&self.compression_buffer[self.total_read_bytes], current_read_bytes, 1, f)
+                fread(PyByteArray_AsString(self.compression_buffer) + self.total_read_bytes, current_read_bytes, 1, f)
                 self.total_read_bytes += current_read_bytes
                 remaining_bytes -= current_read_bytes
                 if datatype == 1:
@@ -471,7 +471,7 @@ cdef class PBD:
             else:
                 raise Exception("Unsupported datatype.")
             header = bytearray(FORMAT_KEY + self.endian_sys + struct.pack(f'{endian}hiiii', datatype, *size[::-1]))
-            assert fwrite(&header[0], HEADER_SIZE, 1, f) == 1, "Header writing failed."
+            assert fwrite(PyByteArray_AsString(header), HEADER_SIZE, 1, f) == 1, "Header writing failed."
             channel_len = sz[0] * sz[1] * sz[2]
             self.compression_pos = channel_len * sz[3] * datatype * COMPRESSION_ENLARGEMENT
             self.compression_buffer = bytearray(self.compression_pos)
