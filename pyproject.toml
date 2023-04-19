@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools", "wheel", "Cython", "numpy", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "v3d-py-helper"
+authors = [
+    {name = "Zuohan Zhao", email = "zzhmark@126.com"},
+    {name = "Yufeng Liu", email = "yufeng_liu@seu.edu.cn"}
+]
+description = "Make Vaa3D functions accessible for high-performance python computation."
+readme = "README.md"
+requires-python = ">=3.9"
+keywords = ["vaa3d", "neuron-morphology", "image-processing"]
+license = { text = "MIT License" }
+dynamic = [ "version" ]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent"
+]
+dependencies = [
+    "numpy"
+]
+
+[project.urls]
+"GitHub Project" = "https://github.com/SEU-ALLEN-codebase/vaa3d-python"
+
+[project.optional-dependencies]
+docs = [ "pdoc" ]
+
+[tool.setuptools_scm]
