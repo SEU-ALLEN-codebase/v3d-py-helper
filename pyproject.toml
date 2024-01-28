@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools", "wheel", "Cython", "numpy", "setuptools-scm"]
+requires = ["setuptools", "wheel", "Cython", "numpy", "setuptools-scm", "cmake_build_extension"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -8,9 +8,9 @@ authors = [
     {name = "Zuohan Zhao", email = "zzhmark@126.com"},
     {name = "Yufeng Liu", email = "yufeng_liu@seu.edu.cn"}
 ]
-description = "Make Vaa3D functions accessible for high-performance python computation."
+description = "Make Vaa3D functions available for high-performance python computation."
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 keywords = ["vaa3d", "neuron-morphology", "image-processing"]
 license = { text = "MIT License" }
 dynamic = [ "version" ]
@@ -20,7 +20,7 @@ classifiers = [
     "Operating System :: OS Independent"
 ]
 dependencies = [
-    "numpy"
+    "numpy",
 ]
 
 [project.urls]

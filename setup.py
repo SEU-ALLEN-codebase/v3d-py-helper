@@ -1,18 +1,242 @@
 from setuptools import Extension, setup
+from pathlib import Path
 import numpy as np
+import cmake_build_extension
+from Cython.Build import cythonize
+import importlib
+import platform
+import subprocess
 
+
+class MyBuildExtension(cmake_build_extension.BuildExtension):
+    # don't use Ninja
+    def build_extension(self, ext: cmake_build_extension.CMakeExtension) -> None:
+        """
+        Build a CMakeExtension object.
+
+        Args:
+            ext: The CMakeExtension object to build.
+        """
+
+        if self.inplace and ext.disable_editable:
+            print(f"Editable install recognized. Extension '{ext.name}' disabled.")
+            return
+
+        # Export CMAKE_PREFIX_PATH of all the dependencies
+        for pkg in ext.cmake_depends_on:
+
+            try:
+                importlib.import_module(pkg)
+            except ImportError:
+                raise ValueError(f"Failed to import '{pkg}'")
+
+            init = importlib.util.find_spec(pkg).origin
+            cmake_build_extension.BuildExtension.extend_cmake_prefix_path(path=str(Path(init).parent))
+
+        # The ext_dir directory can be thought as a temporary site-package folder.
+        #
+        # Case 1: regular installation.
+        #   ext_dir is the folder that gets compressed to make the wheel archive. When
+        #   installed, the archive is extracted in the active site-package directory.
+        # Case 2: editable installation.
+        #   ext_dir is the in-source folder containing the Python packages. In this case,
+        #   the CMake project is installed in-source.
+        ext_dir = Path(self.get_ext_fullpath(ext.name)).parent.absolute()
+        cmake_install_prefix = ext_dir / ext.install_prefix
+
+        # CMake configure arguments
+        configure_args = [
+            # '-GNinja',
+            f"-DCMAKE_BUILD_TYPE={ext.cmake_build_type}",
+            f"-DCMAKE_INSTALL_PREFIX:PATH={cmake_install_prefix}",
+            # Fix #26: https://github.com/diegoferigo/cmake-build-extension/issues/26
+            # f"-DCMAKE_MAKE_PROGRAM={shutil.which('ninja')}",
+        ]
+
+        # Extend the configure arguments with those passed from the extension
+        configure_args += ext.cmake_configure_options
+
+        # CMake build arguments
+        build_args = ["--config", ext.cmake_build_type]
+
+        if platform.system() == "Windows":
+
+            configure_args += []
+
+        elif platform.system() in {"Linux", "Darwin"}:
+
+            configure_args += []
+
+        else:
+            raise RuntimeError(f"Unsupported '{platform.system()}' platform")
+
+        # Parse the optional CMake options. They can be passed as:
+        #
+        # python setup.py build_ext -D"BAR=Foo;VAR=TRUE"
+        # python setup.py bdist_wheel build_ext -D"BAR=Foo;VAR=TRUE"
+        # python setup.py install build_ext -D"BAR=Foo;VAR=TRUE"
+        # python setup.py install -e build_ext -D"BAR=Foo;VAR=TRUE"
+        # pip install --global-option="build_ext" --global-option="-DBAR=Foo;VAR=TRUE" .
+        #
+        configure_args += self.cmake_defines
+
+        # Get the absolute path to the build folder
+        build_folder = str(Path(".").absolute() / f"{self.build_temp}_{ext.name}")
+
+        # Make sure that the build folder exists
+        Path(build_folder).mkdir(exist_ok=True, parents=True)
+
+        # 1. Compose CMake configure command
+        configure_command = [
+                                "cmake",
+                                "-S",
+                                ext.source_dir,
+                                "-B",
+                                build_folder,
+                            ] + configure_args
+
+        # 2. Compose CMake build command
+        build_command = ["cmake", "--build", build_folder] + build_args
+
+        # 3. Compose CMake install command
+        install_command = ["cmake", "--install", build_folder]
+
+        # If the cmake_component option of the CMakeExtension is used, install just
+        # the specified component.
+        if self.component is None and ext.cmake_component is not None:
+            install_command.extend(["--component", ext.cmake_component])
+
+        # Instead, if the `--component` command line option is used, install just
+        # the specified component. This has higher priority than what specified in
+        # the CMakeExtension.
+        if self.component is not None:
+            install_command.extend(["--component", self.component])
+
+        print("")
+        print("==> Configuring:")
+        print(f"$ {' '.join(configure_command)}")
+        print("")
+        print("==> Building:")
+        print(f"$ {' '.join(build_command)}")
+        print("")
+        print("==> Installing:")
+        print(f"$ {' '.join(install_command)}")
+        print("")
+
+        # Call CMake
+        subprocess.check_call(configure_command)
+        subprocess.check_call(build_command)
+        subprocess.check_call(install_command)
+
+        # Write content to the top-level __init__.py
+        if ext.write_top_level_init is not None:
+            with open(file=cmake_install_prefix / "__init__.py", mode="w") as f:
+                f.write(ext.write_top_level_init)
+
+        # Write content to the bin/__main__.py magic file to expose binaries
+        if len(ext.expose_binaries) > 0:
+            bin_dirs = {str(Path(d).parents[0]) for d in ext.expose_binaries}
+
+            import inspect
+
+            main_py = inspect.cleandoc(
+                f"""
+                from pathlib import Path
+                import subprocess
+                import sys
+
+                def main():
+
+                    binary_name = Path(sys.argv[0]).name
+                    prefix = Path(__file__).parent.parent
+                    bin_dirs = {str(bin_dirs)}
+
+                    binary_path = ""
+
+                    for dir in bin_dirs:
+                        path = prefix / Path(dir) / binary_name
+                        if path.is_file():
+                            binary_path = str(path)
+                            break
+
+                        path = Path(str(path) + ".exe")
+                        if path.is_file():
+                            binary_path = str(path)
+                            break
+
+                    if not Path(binary_path).is_file():
+                        name = binary_path if binary_path != "" else binary_name
+                        raise RuntimeError(f"Failed to find binary: {{ name }}")
+
+                    sys.argv[0] = binary_path
+
+                    result = subprocess.run(args=sys.argv, capture_output=False)
+                    exit(result.returncode)
+
+                if __name__ == "__main__" and len(sys.argv) > 1:
+                    sys.argv = sys.argv[1:]
+                    main()"""
+            )
+
+            bin_folder = cmake_install_prefix / "bin"
+            Path(bin_folder).mkdir(exist_ok=True, parents=True)
+            with open(file=bin_folder / "__main__.py", mode="w") as f:
+                f.write(main_py)
+
+
+extensions = [
+    Extension(
+        'v3dpy.loaders.pbd',
+        ['v3dpy/loaders/pbd.pyx'],
+        include_dirs=[np.get_include()],
+        language='c++'
+    ),
+    Extension(
+        'v3dpy.loaders.raw',
+        ['v3dpy/loaders/raw.pyx'],
+        include_dirs=[np.get_include()],
+        language='c++'
+    ),
+    Extension(
+        'v3dpy.terafly.tiff_manage',
+        ['v3dpy/terafly/tiff_manage.pyx'],
+        include_dirs=['3rdparty/libtiff/include', np.get_include()],
+        library_dirs=['3rdparty/libtiff/lib'],
+        libraries=['tiff'],
+        language='c++'
+    ),
+    Extension(
+        'v3dpy.terafly.format_managers',
+        ['v3dpy/terafly/format_managers.pyx'],
+        include_dirs=[np.get_include()],
+        language='c++'
+    ),
+    Extension(
+        'v3dpy.terafly.volume_managers',
+        ['v3dpy/terafly/volume_managers.pyx'],
+        include_dirs=[np.get_include()],
+        language='c++',
+    ),
+]
 
 setup(
     ext_modules=[
-        Extension(
-            name="v3dpy.loaders.pbd",
-            sources=["v3dpy/loaders/pbd.pyx"],
-            include_dirs=[np.get_include()]
-        ),
-        Extension(
-            name="v3dpy.loaders.raw",
-            sources=["v3dpy/loaders/raw.pyx"],
-            include_dirs=[np.get_include()]
-        )
-    ]
+        cmake_build_extension.CMakeExtension(
+        'tiff',
+        '3rdparty/libtiff',
+        source_dir=str(Path('3rdparty/libtiff').absolute()),
+        cmake_configure_options=['-DBUILD_SHARED_LIBS=OFF']
+    )],
+    cmdclass=dict(
+        # Enable the CMakeExtension entries defined above
+        build_ext=MyBuildExtension,
+        # If the setup.py or setup.cfg are in a subfolder wrt the main CMakeLists.txt,
+        # you can use the following custom command to create the source distribution.
+        # sdist=cmake_build_extension.GitSdistFolder
+    ),
+)
+
+
+setup(
+    ext_modules=cythonize(extensions),
 )
