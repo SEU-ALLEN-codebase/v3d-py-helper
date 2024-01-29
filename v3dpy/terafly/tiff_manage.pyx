@@ -268,11 +268,11 @@ cdef void read_tiff_3d_file_to_buffer(void* fhandler,
     cdef int strip_index
 
     if downsampling_factor == 1:  # read without downsampling
-        if start_i < 0 or <unsigned int>end_i >= img_height or start_j < 0 or <unsigned int>end_j >= img_width or \
+        if start_i < 0 or end_i >= <int>img_height or start_j < 0 or end_j >= <int>img_width or \
                 start_i >= end_i or start_j >= end_j:
             raise IOError("Wrong substack indices.")
 
-        if start_i == 0 and end_i == (img_height - 1) and start_j == 0 and end_j == (img_width - 1):  # read whole images from files
+        if start_i == 0 and end_i == <int>img_height - 1 and start_j == 0 and end_j == <int>img_width - 1:  # read whole images from files
             if not TIFFSetDirectory(input, first):
                 raise IOError("Cannot open the requested first strip.")
 
@@ -334,7 +334,7 @@ cdef void read_tiff_3d_file_to_buffer(void* fhandler,
                     break
     else:  # read with downsampling
         # preliminary checks
-        if start_i != 0 or end_i != (img_height - 1) or start_j != 0 or end_j != (img_width - 1):  # a subregion has been requested
+        if start_i != 0 or end_i != <int>img_height - 1 or start_j != 0 or end_j != <int>img_width - 1:  # a subregion has been requested
             raise IOError("Subregion extraction not supported with downsampling.")
         if not TIFFGetField(input, TIFFTAG_IMAGEWIDTH, &XSIZE):
             raise IOError("Image width of undefined.")
