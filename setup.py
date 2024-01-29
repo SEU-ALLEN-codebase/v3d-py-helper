@@ -125,16 +125,7 @@ class MyBuildExtension(build_ext):
             init = importlib.util.find_spec(pkg).origin
             cmake_build_extension.BuildExtension.extend_cmake_prefix_path(path=str(Path(init).parent))
 
-        # The ext_dir directory can be thought as a temporary site-package folder.
-        #
-        # Case 1: regular installation.
-        #   ext_dir is the folder that gets compressed to make the wheel archive. When
-        #   installed, the archive is extracted in the active site-package directory.
-        # Case 2: editable installation.
-        #   ext_dir is the in-source folder containing the Python packages. In this case,
-        #   the CMake project is installed in-source.
-        ext_dir = Path(self.get_ext_fullpath(ext.name)).parent.absolute()
-        cmake_install_prefix = ext_dir / ext.install_prefix
+        cmake_install_prefix = ext.install_prefix
 
         # CMake configure arguments
         configure_args = [
