@@ -157,7 +157,7 @@ class MyBuildExtension(build_ext):
 
         elif platform.system() in {"Linux", "Darwin"}:
 
-            configure_args += []
+            configure_args += ['-DCMAKE_C_FLAGS="-fPIC"']
 
         else:
             raise RuntimeError(f"Unsupported '{platform.system()}' platform")
