@@ -20,6 +20,7 @@ jobs:
       - uses: actions/setup-python@v4
         with:
           python-version-file: .github/python-version.txt
+          submodules: 'recursive'
 
       # ADJUST THIS: install all dependencies (including pdoc)
       - run: pip install -e .
