@@ -110,9 +110,9 @@ class MyBuildExtension(build_ext):
             ext: The CMakeExtension object to build.
         """
 
-        if self.inplace and ext.disable_editable:
-            print(f"Editable install recognized. Extension '{ext.name}' disabled.")
-            return
+        # if self.inplace and ext.disable_editable:
+        #     print(f"Editable install recognized. Extension '{ext.name}' disabled.")
+        #     return
 
         # Export CMAKE_PREFIX_PATH of all the dependencies
         for pkg in ext.cmake_depends_on:
@@ -317,7 +317,7 @@ setup(
         'tiff',
         '3rdparty/libtiff',
         source_dir=str(Path('3rdparty/libtiff').absolute()),
-        cmake_configure_options=['-Djpeg=OFF']
+        cmake_configure_options=['-DBUILD_SHARED_LIBS=OFF', '-Djpeg=OFF']
     )] + extensions,
     cmdclass=dict(
         # Enable the CMakeExtension entries defined above
