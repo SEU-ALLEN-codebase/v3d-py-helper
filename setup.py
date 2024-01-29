@@ -2,15 +2,107 @@ from setuptools import Extension, setup
 from pathlib import Path
 import numpy as np
 import cmake_build_extension
-from Cython.Build import cythonize
 import importlib
 import platform
 import subprocess
+import os
+import shutil
+from setuptools.command.build_ext import build_ext
 
 
-class MyBuildExtension(cmake_build_extension.BuildExtension):
+class MyBuildExtension(build_ext):
+    def initialize_options(self):
+
+        # Initialize base class
+        build_ext.initialize_options(self)
+
+        # Initialize the '--define' custom option, overriding the pre-existing one.
+        # Originally, it was aimed to pass C preprocessor definitions, but instead we
+        # use it to pass custom configuration options to CMake.
+        self.define = None
+
+        # Initialize the '--component' custom option.
+        # It overrides the content of the cmake_component option of CMakeExtension.
+        self.component = None
+
+        # Initialize the 'no-cmake-extension' custom option.
+        # It allows disabling one or more CMakeExtension from the command line.
+        self.no_cmake_extension = None
+
+    @staticmethod
+    def extend_cmake_prefix_path(path: str) -> None:
+
+        abs_path = Path(path).absolute()
+
+        if not abs_path.exists():
+            raise ValueError(f"Path {abs_path} does not exist")
+
+        if "CMAKE_PREFIX_PATH" in os.environ:
+            os.environ[
+                "CMAKE_PREFIX_PATH"
+            ] = f"{str(path)}:{os.environ['CMAKE_PREFIX_PATH']}"
+        else:
+            os.environ["CMAKE_PREFIX_PATH"] = str(path)
+
+    def finalize_options(self):
+
+        # Parse the custom CMake options and store them in a new attribute
+        defines = [] if self.define is None else self.define.split(";")
+        self.cmake_defines = [f"-D{define}" for define in defines]
+
+        # Parse the disabled CMakeExtension modules and store them in a new attribute
+        self.no_cmake_extensions = (
+            []
+            if self.no_cmake_extension is None
+            else self.no_cmake_extension.split(";")
+        )
+
+        # Call base class
+        build_ext.finalize_options(self)
+
+    def run(self) -> None:
+        """
+        Process all the registered extensions executing only the CMakeExtension objects.
+        """
+
+        # Filter the CMakeExtension objects
+        cmake_extensions = [e for e in self.extensions if isinstance(e, cmake_build_extension.CMakeExtension)]
+
+        if len(cmake_extensions) == 0:
+            raise ValueError("No CMakeExtension objects found")
+
+        # Check that CMake is installed
+        if shutil.which("cmake") is None:
+            raise RuntimeError("Required command 'cmake' not found")
+
+        # Check that Ninja is installed
+        if shutil.which("ninja") is None:
+            raise RuntimeError("Required command 'ninja' not found")
+
+        for ext in cmake_extensions:
+
+            # Disable the extension if specified in the command line
+            if (
+                ext.name in self.no_cmake_extensions
+                or "all" in self.no_cmake_extensions
+            ):
+                continue
+
+            # Disable all extensions if this env variable is present
+            disabled_set = {"0", "false", "off", "no"}
+            env_var_name = "CMAKE_BUILD_EXTENSION_ENABLED"
+            if (
+                env_var_name in os.environ
+                and os.environ[env_var_name].lower() in disabled_set
+            ):
+                continue
+
+            self.my_build_extension(ext)
+        self.extensions = [e for e in self.extensions if not isinstance(e, cmake_build_extension.CMakeExtension)]
+        build_ext.run(self)
+
     # don't use Ninja
-    def build_extension(self, ext: cmake_build_extension.CMakeExtension) -> None:
+    def my_build_extension(self, ext: cmake_build_extension.CMakeExtension) -> None:
         """
         Build a CMakeExtension object.
 
@@ -226,7 +318,7 @@ setup(
         '3rdparty/libtiff',
         source_dir=str(Path('3rdparty/libtiff').absolute()),
         cmake_configure_options=['-DBUILD_SHARED_LIBS=OFF']
-    )],
+    )] + extensions,
     cmdclass=dict(
         # Enable the CMakeExtension entries defined above
         build_ext=MyBuildExtension,
@@ -234,9 +326,4 @@ setup(
         # you can use the following custom command to create the source distribution.
         # sdist=cmake_build_extension.GitSdistFolder
     ),
-)
-
-
-setup(
-    ext_modules=cythonize(extensions),
 )
