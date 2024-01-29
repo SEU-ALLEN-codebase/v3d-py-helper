@@ -1,3 +1,9 @@
+"""
+Loaders for TeraFly formats. To use, first initialize an object with the TeraConverted directory path.
+Two functions are offered for checking the dims and retrieving the sub blocks.
+The indexing style of TeraFly is [start, end]
+"""
+
 import os
 
 from .volume_managers import VirtualVolume, TiledVolume

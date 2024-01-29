@@ -157,7 +157,7 @@ class MyBuildExtension(build_ext):
 
         elif platform.system() in {"Linux", "Darwin"}:
 
-            configure_args += ['-DCMAKE_C_FLAGS="-fPIC"']
+            configure_args += ['']
 
         else:
             raise RuntimeError(f"Unsupported '{platform.system()}' platform")
@@ -317,7 +317,7 @@ setup(
         'tiff',
         '3rdparty/libtiff',
         source_dir=str(Path('3rdparty/libtiff').absolute()),
-        cmake_configure_options=['-DBUILD_SHARED_LIBS=OFF']
+        cmake_configure_options=['-DBUILD_SHARED_LIBS=OFF', '-Dld-version-script=OFF']
     )] + extensions,
     cmdclass=dict(
         # Enable the CMakeExtension entries defined above
