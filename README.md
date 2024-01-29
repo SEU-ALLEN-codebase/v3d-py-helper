@@ -48,6 +48,11 @@ end = size // 2 + half_block_size - 1
 img = t.get_sub_volume(start[0], end[0], start[1], end[1], start[2], end[2])
 ```
 
+## Toubleshooting
+
+On Windows, MS BuildTool >= 16 is required to build the wheel.
+
+
 ## Useful Links
 
 Github project: https://github.com/SEU-ALLEN-codebase/v3d-py-helper
