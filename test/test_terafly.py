@@ -1,5 +1,4 @@
 import unittest
-from v3dpy.loaders import PBD
 from v3dpy.terafly import TeraflyInterface
 from pathlib import Path
 import numpy as np
@@ -28,6 +27,7 @@ class TeraflyTest(unittest.TestCase):
             end = size // 2 + half_block_size - 1
 
             img = t.get_sub_volume(start[0], end[0], start[1], end[1], start[2], end[2])
+            print(img.max())
             # PBD(pbd16_full_blood=False).save(outdir / f'{tfpath.parent.name}.v3dpbd', img)
 
 

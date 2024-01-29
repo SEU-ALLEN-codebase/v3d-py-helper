@@ -24,6 +24,7 @@ jobs:
           python-version-file: .github/python-version.txt
 
       # ADJUST THIS: install all dependencies (including pdoc)
+      - run: sudo apt-get install -y libtiff-dev libjpeg-dev libz-dev liblzma-dev libbz2-dev
       - run: pip install -e .
       - run: pip install pdoc
       # ADJUST THIS: build your documentation into docs/.
