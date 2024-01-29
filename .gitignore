@@ -129,5 +129,8 @@ dmypy.json
 .pyre/
 .idea
 docs/
-*.c
-*.cpp
+v3dpy/**/*.c
+v3dpy/**/*.cpp
+v3dpy/**/*.h
+v3dpy/**/*.html
+test/testoutput

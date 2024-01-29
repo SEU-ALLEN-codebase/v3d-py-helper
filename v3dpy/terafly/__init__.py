@@ -5,6 +5,9 @@ from pathlib import Path
 from .config import *
 
 
+__all__ = ['TeraflyInterface']
+
+
 class TeraflyInterface:
     """
     Currently only support 3D tiff tiles.
@@ -42,7 +45,7 @@ class TeraflyInterface:
                     else:
                         raise ValueError(f"Cannot recognize format {format}")
                 except:
-                    raise f"Cannot import {format} at {self._path}"
+                    raise IOError(f"Cannot import {format} at {self._path}")
             if self._volume is None:
                 # try:
                 #     self._volume = TiledMCVolume(path)

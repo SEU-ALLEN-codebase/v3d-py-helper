@@ -1,6 +1,5 @@
-from libc.stdint cimport uint32_t, uint16_t, uint8_t
+from libc.stdint cimport uint32_t, uint16_t, uint8_t, int64_t, uint64_t
 from libc.string cimport memcpy
-from libcpp.string cimport string
 from libc.math cimport floor, ceil
 import cython
 cimport numpy as cnp
@@ -9,9 +8,9 @@ import numpy as np
 
 cdef extern from "tiffio.h":
     ctypedef struct TIFF
-    ctypedef uint32_t ttile_t
-    ctypedef uint32_t tstrip_t
-    ctypedef uint32_t tsize_t
+    ctypedef int64_t ttile_t
+    ctypedef uint64_t tstrip_t
+    ctypedef uint64_t tsize_t
     ctypedef void * tdata_t
 
     TIFF * TIFFOpen(const char * name, const char * mode)
@@ -65,12 +64,12 @@ cdef void swap4bytes(void* targetp):
     tp[2] = a
 
 
-cdef void close_tiff3d_file(unsigned long long fhandle):
+cdef void close_tiff3d_file(void* fhandle):
     TIFFClose(<TIFF*> fhandle)
 
 
-cdef unsigned long long load_tiff3d2metadata(string filename, unsigned int& sz0, unsigned int& sz1, unsigned int& sz2,
-                                            unsigned int& sz3, int& datatype, bint& b_swap):
+cdef void* load_tiff3d2metadata(const char* filename, unsigned int& sz0, unsigned int& sz1, unsigned int& sz2,
+                                unsigned int& sz3, int& datatype, bint& b_swap):
     cdef:
         uint32_t XSIZE
         uint32_t YSIZE
@@ -86,7 +85,7 @@ cdef unsigned long long load_tiff3d2metadata(string filename, unsigned int& sz0,
     TIFFSetWarningHandler(NULL)
     TIFFSetErrorHandler(NULL)
 
-    input = TIFFOpen(filename.c_str(), mode)
+    input = TIFFOpen(filename, mode)
     if not input:
         raise IOError("Cannot open the file.")
 
@@ -122,7 +121,7 @@ cdef unsigned long long load_tiff3d2metadata(string filename, unsigned int& sz0,
     datatype = bpp // 8
 
     b_swap = TIFFIsByteSwapped(input)
-    return <unsigned long long> input
+    return <void*> input
 
 
 cdef void copydata(unsigned char *psrc, uint32_t stride_src, unsigned char *pdst, uint32_t stride_dst, uint32_t width, uint32_t len):
@@ -136,22 +135,22 @@ cdef void copydata(unsigned char *psrc, uint32_t stride_src, unsigned char *pdst
 @cython.boundscheck(False)
 @cython.wraparound(False)
 @cython.cdivision(True)
-cdef void read_tiff_3d_file_to_buffer(unsigned long long fhandler,
+cdef void read_tiff_3d_file_to_buffer(void* fhandler,
                                      unsigned char * img,
                                      unsigned int img_width,
                                      unsigned int img_height,
                                      unsigned int first,
                                      unsigned int last,
                                      bint b_swap,
-                                     int downsampling_factor=1,
-                                     int start_i=-1,
-                                     int end_i=-1,
-                                     int start_j=-1,
-                                     int end_j=-1):
+                                     int downsampling_factor,
+                                     int start_i,
+                                     int end_i,
+                                     int start_j,
+                                     int end_j):
     cdef:
         uint32_t rps
-        uint16_t spp, bpp, orientation, photo, comp, planar_config
-        int check, strips_per_image, LastStripSize
+        uint16_t spp, bpp, orientation, photo, comp, planar_config, c
+        int check, strips_per_image, last_strip_size
         uint32_t XSIZE
         uint32_t YSIZE
         TIFF* input = <TIFF*>fhandler
@@ -251,7 +250,7 @@ cdef void read_tiff_3d_file_to_buffer(unsigned long long fhandler,
                 len = tilelength if ((tile / tilenum_width + 1) * tilelength <= end_i + 1) else (end_i + 1) % tilelength
 
                 page += 1
-            if not(page < (last - first + 1) and TIFFReadDirectory(input)):
+            if not(<unsigned int>page < (last - first + 1) and TIFFReadDirectory(input)):
                 break
         return
 
@@ -269,7 +268,8 @@ cdef void read_tiff_3d_file_to_buffer(unsigned long long fhandler,
     cdef int strip_index
 
     if downsampling_factor == 1:  # read without downsampling
-        if start_i < 0 or end_i >= img_height or start_j < 0 or end_j >= img_width or start_i >= end_i or start_j >= end_j:
+        if start_i < 0 or <unsigned int>end_i >= img_height or start_j < 0 or <unsigned int>end_j >= img_width or \
+                start_i >= end_i or start_j >= end_j:
             raise IOError("Wrong substack indices.")
 
         if start_i == 0 and end_i == (img_height - 1) and start_j == 0 and end_j == (img_width - 1):  # read whole images from files
@@ -292,7 +292,7 @@ cdef void read_tiff_3d_file_to_buffer(unsigned long long fhandler,
                 buf += spp * last_strip_size * img_width * (bpp / 8)
 
                 page += 1
-                if not (page < last - first + 1 and TIFFReadDirectory(input)):
+                if not (<unsigned int>page < last - first + 1 and TIFFReadDirectory(input)):
                     break
         else:  # read only a subregion of images from files
             if not TIFFGetField(input, TIFFTAG_IMAGEWIDTH, &XSIZE):
@@ -310,7 +310,7 @@ cdef void read_tiff_3d_file_to_buffer(unsigned long long fhandler,
                 strip_index = (start_i / rps) - 1  # the strip preceeding the first one
                 for i in range(start_i, end_i + 1):
                     if floor(i / rps) > strip_index:  # read a new strip
-                        strip_index = int(floor(i / rps))
+                        strip_index = <int>floor(i / rps)
                         if comp == 1:
                             TIFFReadRawStrip(input, strip_index, rowbuf,
                                              spp * (rps if strip_index < strips_per_image else last_strip_size) * XSIZE * (bpp / 8))
@@ -330,7 +330,7 @@ cdef void read_tiff_3d_file_to_buffer(unsigned long long fhandler,
                     buf += spp * (end_j - start_j + 1) * (bpp / 8)
 
                 page += 1
-                if not (page < last - first + 1):
+                if not (<unsigned int>page < last - first + 1):
                     break
     else:  # read with downsampling
         # preliminary checks
@@ -377,7 +377,7 @@ cdef void read_tiff_3d_file_to_buffer(unsigned long long fhandler,
 
             page += 1
 
-            if not (page < last - first + 1):
+            if not (<unsigned int>page < last - first + 1):
                 break
 
     cdef tsize_t total = img_width * img_height * spp * (last-first+1)

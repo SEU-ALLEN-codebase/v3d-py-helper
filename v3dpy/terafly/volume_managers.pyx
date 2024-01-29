@@ -5,82 +5,81 @@ import struct
 import numpy as np
 cimport numpy as cnp
 
-from cpython.mem cimport PyMem_Malloc, PyMem_Free
 from libcpp.string cimport string
 from libcpp.vector cimport vector
-from format_managers import VirtualFmtMngr, Tiff3DFmtMngr
+from .format_managers cimport Tiff3DFmtMngr, VirtualFmtMngr
+from libc.stdint cimport uint32_t, int64_t, int32_t, uint16_t
 
 
 cdef class VirtualVolume:
-    cdef long long VXL_V, VXL_H, VXL_D
-    cdef str root_dir
-    cdef float ORG_V, ORG_H, ORG_D
-    cdef long long DIM_V, DIM_H, DIM_D, DIM_C
-    cdef long long BYTESxCHAN
-    cdef long long t0, t1
-    cdef long long DIM_T
+    cdef:
+        public object root_dir
+        public float VXL_V, VXL_H, VXL_D
+        public float ORG_V, ORG_H, ORG_D
+        public uint32_t DIM_V, DIM_H, DIM_D, DIM_C
+        public uint32_t BYTESxCHAN
+    def __cinit__(self):
+        self.ORG_V = self.ORG_H = self.ORG_D = 0.0
+        self.DIM_V = self.DIM_H = self.DIM_D = self.DIM_C = 0
+        self.BYTESxCHAN = 0
 
-    def __init__(self, root_dir: Path, vxl_1=0, vxl_2=0, vxl_3=0):
+    def __init__(self, root_dir: Path = None, vxl_1=0, vxl_2=0, vxl_3=0):
         self.root_dir = root_dir
         self.VXL_V = vxl_1
         self.VXL_H = vxl_2
         self.VXL_D = vxl_3
-        self.ORG_V = self.ORG_H = self.ORG_D = 0.0
-        self.DIM_V = self.DIM_H = self.DIM_D = self.DIM_C = 0
-        self.BYTESxCHAN = 0
-        self.t0 = self.t1 = 0
-        self.DIM_T = 1
 
-    cpdef cnp.ndarray load_sub_volume(self, long long v0=-1, long long v1=-1, long long h0=-1,
-                                    long long h1=-1, long long d0=-1, long long d1=-1):
+
+    cpdef cnp.ndarray load_sub_volume(self, int32_t v0=-1, int32_t v1=-1, int32_t h0=-1,
+                                    int32_t h1=-1, int32_t d0=-1, int32_t d1=-1):
         raise NotImplementedError
 
 
 
-cdef class Rect:
-    cdef long long H0, H1, V0, V1  # Use 'public' to make attributes accessible in Python-space
-
-    def __init__(self, int h0, int v0, int h1, int v1):
-        self.H0 = h0
-        self.H1 = h1
-        self.V0 = v0
-        self.V1 = v1
+cdef struct Rect:
+    int32_t H0
+    int32_t H1
+    int32_t V0
+    int32_t V1
 
 
-cdef class Segm:
-    cdef long long D0, D1, ind0, ind1  # Use 'public' to make attributes accessible in Python-space
-
-    def __init__(self, int d0, int d1, int ind0, int ind1):
-        self.D0 = d0
-        self.D1 = d1
-        self.ind0 = ind0
-        self.ind1 = ind1
+cdef struct Segm:
+    uint32_t D0
+    uint32_t D1
+    uint32_t ind0
+    uint32_t ind1
 
 
 cdef class Block(VirtualVolume):
-    DIR_NAME: str
-    cdef object CONTAINER
-    cdef long long ROW_INDEX, COL_INDEX
-    cdef long long HEIGHT, WIDTH, DEPTH, N_BLOCKS, N_CHANS, N_BYTESxCHAN, ABS_V, ABS_H
-    cdef vector[string] FILENAMES
-    cdef vector[long long] BLOCK_SIZE
-    cdef vector[long long] BLOCK_ABS_D
+    cdef:
+        public str DIR_NAME
+        public object CONTAINER
+        public uint16_t ROW_INDEX, COL_INDEX
+        public uint32_t HEIGHT, WIDTH, DEPTH, N_BLOCKS, N_CHANS, N_BYTESxCHAN
+        public int32_t ABS_V, ABS_H
+        public vector[string] FILENAMES
+        public vector[uint32_t] BLOCK_SIZE
+        public vector[int32_t] BLOCK_ABS_D
 
-    def __init__(self, container, long long row_index, long long col_index, file):
+    def __cinit__(self):
+        self.BLOCK_SIZE = vector[uint32_t]()
+        self.BLOCK_ABS_D = vector[int32_t]()
+        self.FILENAMES = vector[string]()
+        self.HEIGHT = self.WIDTH = self.DEPTH = self.N_BLOCKS = self.N_CHANS \
+            = self.ABS_V = self.ABS_H = 0
+        self.DIR_NAME= ''
+        self.N_BYTESxCHAN = 0
+
+    def __init__(self, object container, uint16_t row_index, uint16_t col_index, object file):
         super(Block, self).__init__()
-        self.BLOCK_SIZE = []
-        self.BLOCK_ABS_D = []
-        self.FILENAMES = []
         self.CONTAINER = container
         self.ROW_INDEX = row_index
         self.COL_INDEX = col_index
-        self.HEIGHT = self.WIDTH = self.DEPTH = self.N_BLOCKS = self.N_CHANS = self.ABS_V = self.ABS_H = 0
-        self.DIR_NAME= ''
-        self.N_BYTESxCHAN = 0
         self.unbinarize_from(file)
 
     cdef void unbinarize_from(self, object file):
-        cdef long long i, str_size
+        cdef uint32_t i
+        cdef uint16_t str_size
         self.HEIGHT, self.WIDTH, self.DEPTH, self.N_BLOCKS, self.N_CHANS, self.ABS_V, self.ABS_H, str_size = \
             struct.unpack('IIIIIiiH', file.read(30))
         self.DIR_NAME = file.read(str_size).decode('utf-8').rstrip("\x00")
@@ -91,60 +90,72 @@ cdef class Block(VirtualVolume):
             self.BLOCK_ABS_D.push_back(struct.unpack('i', file.read(4))[0])
         self.N_BYTESxCHAN = struct.unpack('I', file.read(4))[0]
 
-    cdef Segm intersects_segm(self, int d0, int d1):
-        cdef int i0 = 0
-        cdef int i1 = self.N_BLOCKS - 1
-
-        if d0 >= self.BLOCK_ABS_D[i1] + self.BLOCK_SIZE[i1] or d1 <= 0:
-            return None # no intersection
-
-        while i0 < i1:
-            if d0 < self.BLOCK_ABS_D[i0 + 1]:
-                break
-            i0 += 1
-
-        while i1 > 0:
-            if d1 > self.BLOCK_ABS_D[i1]:
-                break
-            i1 -= 1
-
-        return Segm(max(d0, 0), min(d1, self.DEPTH), i0, i1)
-
-    cdef Rect intersects_rect(self, Rect area):
-        cdef int abs_h_plus_width = self.ABS_H + self.WIDTH
-        cdef int abs_v_plus_height = self.ABS_V + self.HEIGHT
-
-        if (area.H0 < abs_h_plus_width and area.H1 > self.ABS_H and
-            area.V0 < abs_v_plus_height and area.V1 > self.ABS_V):
-
-            return Rect(
-                max(self.ABS_H, area.H0),
-                max(self.ABS_V, area.V0),
-                min(abs_h_plus_width, area.H1),
-                min(abs_v_plus_height, area.V1)
-            )
-        else:
-            return None
-
-    cdef str get_fmt(self):
-        temp = bytes(self.FILENAMES[0]).decode('utf-8').split('.')
-        if temp == 'tif' or temp == 'tif':
-            return 'Tiff3D'
-        elif temp == 'v3draw':
-            return 'Vaa3DRaw'
+    @cython.boundscheck(False)
+    @cython.nonecheck(False)
+    cpdef bytes get_fmt(self):
+        cdef bytes temp = bytes(self.FILENAMES[0]).split(b'.')[-1]
+        if temp == b'tif' or temp == b'tif':
+            return b'Tiff3D'
+        elif temp == b'v3draw':
+            return b'Vaa3DRaw'
         else:
             raise IOError(f'Block: Unknown file format {temp}')
 
 
+cdef bint intersects_segm(Block block, int32_t d0, int32_t d1, Segm& out):
+    cdef int32_t i0 = 0, i1 = block.N_BLOCKS - 1
+
+    if d0 >= <int32_t>(block.BLOCK_ABS_D[i1] + block.BLOCK_SIZE[i1]) or d1 <= 0:
+        return False # no intersection
+
+    while i0 < i1:
+        if d0 < block.BLOCK_ABS_D[i0 + 1]:
+            break
+        i0 += 1
+
+    while i1 > 0:
+        if d1 > block.BLOCK_ABS_D[i1]:
+            break
+        i1 -= 1
+
+    out.D0 = max(d0, 0)
+    out.D1 = min(d1, <int32_t>block.DEPTH)
+    out.ind0 = i0
+    out.ind1 = i1
+
+    return True
+
+cdef bint intersects_rect(Block block, const Rect& area, Rect& out):
+    cdef:
+        int32_t t1 = block.ABS_H + block.WIDTH
+        int32_t t2 = block.ABS_V + block.HEIGHT
+
+    if area.H0 < t1 and area.H1 > block.ABS_H and area.V0 < t2 and area.V1 > block.ABS_V:
+
+        out.H0 = max(block.ABS_H, area.H0)
+        out.V0 = max(block.ABS_V, area.V0)
+        out.H1 = min(t1, area.H1)
+        out.V1 = min(t2, area.V1)
+
+        return True
+    else:
+        return False
+
+
 cdef class TiledVolume(VirtualVolume):
-    cdef long long N_ROWS, N_COLS  # <-- Static type declarations
-    cdef list BLOCKS  # <-- Declare a 2D C-style array of Blocks
+    cdef:
+        uint16_t N_ROWS, N_COLS  # <-- Static type declarations
+        list BLOCKS  # <-- Declare a 2D C-style array of Blocks
+        int32_t reference_system_first, reference_system_second, reference_system_thrid
+        float VXL_1, VXL_2, VXL_3
+
+    def __cinit__(self):
+        self.reference_system_first = self.reference_system_second = self.reference_system_thrid = \
+            self.VXL_1 = self.VXL_2 = self.VXL_3 = self.N_ROWS = self.N_COLS = 0
 
     def __init__(self, root_dir: Path):
         super(TiledVolume, self).__init__(root_dir)
         self.BLOCKS = None
-        self.reference_system_first = self.reference_system_second = self.reference_system_thrid = \
-            self.VXL_1 = self.VXL_2 = self.VXL_3 = self.N_ROWS = self.N_COLS = 0
         mdata_filepath = root_dir / MDATA_BIN_FILE_NAME
         if mdata_filepath.is_file():  # We need to convert string back to Path object for is_file()
             self.load(mdata_filepath)
@@ -152,8 +163,11 @@ cdef class TiledVolume(VirtualVolume):
         else:
             raise ValueError(f"TiledVolume: unable to find metadata file at {mdata_filepath}")
 
+    @cython.boundscheck(False)
+    @cython.wraparound(False)
+    @cython.nonecheck(False)
     cdef load(self, mdata_filepath: Path):
-        cdef long long i, j
+        cdef uint16_t i, j
 
         with open(mdata_filepath, 'rb') as f:
             mdata_version_read = struct.unpack('f', f.read(4))[0]
@@ -175,49 +189,57 @@ cdef class TiledVolume(VirtualVolume):
     @cython.boundscheck(False)
     @cython.wraparound(False)
     @cython.nonecheck(False)
-    cpdef cnp.ndarray load_sub_volume(self, long long v0=-1, long long v1=-1, long long h0=-1,
-                                    long long h1=-1, long long d0=-1, long long d1=-1):
-        cdef long long row, col, k, sv0, sv1, sh0, sh1, sd0, sd1, bv0, bh0, bd0
-        cdef Block block
-        cdef Rect intersect_area
-        cdef str dt
-        cdef bint first_time = True
+    cpdef cnp.ndarray load_sub_volume(self, int32_t V0=-1, int32_t V1=-1, int32_t H0=-1,
+                                      int32_t H1=-1, int32_t D0=-1, int32_t d1=-1):
+        cdef:
+            uint16_t row, col
+            int32_t k, sV0, sV1, sH0, sH1, sD0, sD1, bV0, bH0, bD0
+            Block block
+            Rect intersect_area
+            Segm intersect_segm
+            bytes slice_fullpath
+            bint first_time = True
+            bytes ffmt
 
-        v0, h0, d0 = max(0, v0), max(0, h0), max(0, d0)
-        v1 = v1 if 0 <= v1 <= self.DIM_V else self.DIM_V
-        h1 = h1 if 0 <= h1 <= self.DIM_H else self.DIM_H
-        d1 = d1 if 0 <= d1 <= self.DIM_D else self.DIM_D
-        assert v1 > v0 and h1 > h0 and d1 > d0
+        V0, H0, D0 = max(0, V0), max(0, H0), max(0, D0)
+        V1 = V1 if 0 <= V1 <= <int32_t>self.DIM_V else self.DIM_V
+        H1 = H1 if 0 <= H1 <= <int32_t>self.DIM_H else self.DIM_H
+        d1 = d1 if 0 <= d1 <= <int32_t>self.DIM_D else self.DIM_D
+        assert V1 > V0 and H1 > H0 and d1 > D0, "TiledVolume: The start position should be lower than the end position."
 
-        cdef cnp.int64_t sbv_height = v1 - v0
-        cdef cnp.int64_t sbv_width = h1 - h0
-        cdef cnp.int64_t sbv_depth = d1 - d0
-        cdef cnp.int64_t sbv_channels
-        cdef cnp.int64_t sbv_bytes_chan
-        cdef cnp.ndarray npsubvol
-        cdef unsigned char * subvol
+        cdef:
+            int64_t sbv_height = V1 - V0
+            int64_t sbv_width = H1 - H0
+            int64_t sbv_depth = d1 - D0
+            int64_t sbv_channels
+            int64_t sbv_bytes_chan
+            cnp.ndarray npsubvol
+            unsigned char* subvol
+            VirtualFmtMngr fmt_mngr
 
-        subvol_area = Rect(h0, v0, h1, v1)
-        intersect_segm = self.BLOCKS[0][0].intersects_segm(d0, d1)
+        subvol_area = Rect()
+        subvol_area.H0 = H0
+        subvol_area.H1 = H1
+        subvol_area.V0 = V0
+        subvol_area.V1 = V1
+
         ffmt = self.BLOCKS[0][0].get_fmt()
-        if ffmt == 'Tiff3D':
+        if ffmt == b'Tiff3D':
             fmt_mngr = Tiff3DFmtMngr()
-        elif ffmt == 'Vaa3DRaw':
+        elif ffmt == b'Vaa3DRaw':
             raise NotImplementedError
 
-        if intersect_segm is not None:
+        if intersects_segm(self.BLOCKS[0][0], D0, d1, intersect_segm):
             for row in range(self.N_ROWS):
                 for col in range(self.N_COLS):
                     block = self.BLOCKS[row][col]
-                    intersect_area = block.intersects_rect(subvol_area)
-
-                    if intersect_area is not None:
+                    if intersects_rect(block, subvol_area, intersect_area):
                         for k in range(intersect_segm.ind0, intersect_segm.ind1 + 1):
                             if first_time:
                                 first_time = False
                                 sbv_channels = self.DIM_C
                                 sbv_bytes_chan = self.BYTESxCHAN
-                                assert sbv_channels == 1  # multi channel not supported here
+                                assert sbv_channels == 1 , "TiledVolume: Multi channel not supported yet."
                                 if sbv_bytes_chan == 1:
                                     dt = np.uint8
                                 elif sbv_bytes_chan == 2:
@@ -225,32 +247,34 @@ cdef class TiledVolume(VirtualVolume):
                                 elif sbv_bytes_chan == 4:
                                     dt = np.float32
                                 else:
-                                    raise ValueError(f"Unsupported Datatype {self.BYTESxCHAN}")
-                                npsubvol = np.zeros((sbv_depth, sbv_height, sbv_width, sbv_channels), dtype=dt)
+                                    raise ValueError(f"TiledVolume: Unsupported Datatype {self.BYTESxCHAN}")
+                                npsubvol = np.zeros((sbv_channels, sbv_depth, sbv_height, sbv_width), dtype=dt)
                                 subvol = <unsigned char *> npsubvol.data
 
-                            slice_fullpath = self.root_dir / block.DIR_NAME / bytes(block.FILENAMES[k]).decode('utf-8')
+                            slice_fullpath = str(self.root_dir / block.DIR_NAME /
+                                                 bytes(block.FILENAMES[k]).decode('utf-8')).encode('utf-8')
 
                             # vertices of file block
-                            sv0 = 0 if v0 < intersect_area.V0 else v0 - block.ABS_V
-                            sv1 = block.HEIGHT if v1 > intersect_area.V1 else v1 - block.ABS_V
-                            sh0 = 0 if h0 < intersect_area.H0 else h0 - block.ABS_H
-                            sh1 = block.WIDTH if h1 > intersect_area.H1 else h1 - block.ABS_H
-                            sd0 = 0 if d0 < block.BLOCK_ABS_D[k] else d0 - block.BLOCK_ABS_D[k]
-                            sd1 = block.BLOCK_SIZE[k] if d1 > block.BLOCK_ABS_D[k] + block.BLOCK_SIZE[k] \
+                            sV0 = 0 if V0 < intersect_area.V0 else V0 - block.ABS_V
+                            sV1 = block.HEIGHT if V1 > intersect_area.V1 else V1 - block.ABS_V
+                            sH0 = 0 if H0 < intersect_area.H0 else H0 - block.ABS_H
+                            sH1 = block.WIDTH if H1 > intersect_area.H1 else H1 - block.ABS_H
+                            sD0 = 0 if D0 < block.BLOCK_ABS_D[k] else D0 - block.BLOCK_ABS_D[k]
+                            sD1 = block.BLOCK_SIZE[k] if d1 > <int32_t>(block.BLOCK_ABS_D[k] + block.BLOCK_SIZE[k]) \
                                 else d1 - block.BLOCK_ABS_D[k]
 
                             # vertices of buffer block
-                            bv0 = 0 if v0 > intersect_area.V0 else intersect_area.V0 - v0
-                            bh0 = 0 if h0 > intersect_area.H0 else intersect_area.H0 - h0
-                            bd0 = 0 if d0 > block.BLOCK_ABS_D[k] else block.BLOCK_ABS_D[k] - d0
+                            bV0 = 0 if V0 > intersect_area.V0 else intersect_area.V0 - V0
+                            bH0 = 0 if H0 > intersect_area.H0 else intersect_area.H0 - H0
+                            bD0 = 0 if D0 > block.BLOCK_ABS_D[k] else block.BLOCK_ABS_D[k] - D0
 
-                            if "NULL.tif" in str(slice_fullpath):
+                            if b"NULL.tif" in slice_fullpath:
                                 continue
 
-                            fmt_mngr.copy_file_block2buffer(slice_fullpath, sv0, sv1, sh0, sh1, sd0, sd1,
-                                                            subvol, <int>sbv_bytes_chan,
-                                                            bh0 + bv0 * sbv_width + bd0 * sbv_width * sbv_height,
+                            fmt_mngr.copy_file_block2buffer(slice_fullpath,
+                                                            sV0, sV1, sH0, sH1, sD0, sD1,
+                                                            subvol, sbv_bytes_chan,
+                                                            bH0 + bV0 * sbv_width + bD0 * sbv_width * sbv_height,
                                                             sbv_width,
                                                             sbv_width * sbv_height,
                                                             sbv_width * sbv_height * sbv_depth)
