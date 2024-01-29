@@ -317,7 +317,7 @@ setup(
         'tiff',
         '3rdparty/libtiff',
         source_dir=str(Path('3rdparty/libtiff').absolute()),
-        cmake_configure_options=['-DBUILD_SHARED_LIBS=OFF', '-Djpeg=OFF']
+        cmake_configure_options=['-DBUILD_SHARED_LIBS=OFF', '-Djpeg=OFF', '-Dzstd=OFF']
     )] + extensions,
     cmdclass=dict(
         # Enable the CMakeExtension entries defined above
