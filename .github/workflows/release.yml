@@ -14,7 +14,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest, windows-latest, macos-14]
     environment:
       name: pypi
       url: https://pypi.org/project/v3d-py-helper/
@@ -35,7 +35,7 @@ jobs:
     - name: build the wheel
       run: python -m cibuildwheel --output-dir dist/
       env:
-        CIBW_BUILD: "cp310-* cp311-* cp312-*"
+        CIBW_BUILD_FRONTEND: build
 
     - name: publish to Test PyPI
       uses: pypa/gh-action-pypi-publish@v1.8.12

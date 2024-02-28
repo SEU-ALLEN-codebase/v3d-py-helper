@@ -12,20 +12,8 @@ from setuptools.command.install import install
 
 
 class CustomInstallCommand(install):
-    user_options = install.user_options + [
-        ('gh', None, 'A custom boolean option for the install command'),
-    ]
-
-    def initialize_options(self):
-        install.initialize_options(self)
-        self.gh = False
-
-    def finalize_options(self):
-        install.finalize_options(self)
-
     def run(self):
-        gh_option = os.getenv('GH_OPTION', 'False').lower() == 'true'
-        if gh_option:
+        if os.getenv('GH_OPTION', 'false').lower() == 'true':
             print('Set args for Github pages')
             for ext in self.distribution.ext_modules:
                 if isinstance(ext, cmake_build_extension.CMakeExtension) and ext.name == 'tiff':
@@ -33,7 +21,6 @@ class CustomInstallCommand(install):
                         '-Djpeg=OFF', '-Dzlib=OFF', '-Dlerc=OFF', '-Dpixarlog=OFF',
                         '-Dzstd=OFF', '-Dlzma=OFF', '-Dlzw=OFF', '-Dpackbits=OFF', '-Djbig=OFF', '-Dold-jpeg=OFF'
                     ])
-
         install.run(self)
 
 
