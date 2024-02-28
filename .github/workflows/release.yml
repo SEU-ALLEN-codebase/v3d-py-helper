@@ -36,7 +36,7 @@ jobs:
       run: python -m build --sdist --wheel . --outidr dist/
 
     - name: publish to Test PyPI
-      uses: pypa/gh-action-pypi-publish@release/v1.8.12
+      uses: pypa/gh-action-pypi-publish@release/v1
       with:
         password: $${{ secrets.TEST_PYPI_API_TOKEN }}
         repository-url: https://test.pypi.org/legacy/
