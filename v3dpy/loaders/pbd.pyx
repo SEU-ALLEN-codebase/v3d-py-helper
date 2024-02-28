@@ -450,8 +450,10 @@ cdef class PBD:
     cpdef void save(self, path: str | os.PathLike, np.ndarray img):
         """
         :param path: output image path of v3dpbd.
-        :param img: 4D numpy array of either uint8 or uint16.
+        :param img: 4D numpy array (C,Z,Y,X) of either uint8 or uint16.
         """
+        assert img.ndim == 4, "The image has to be 4D"
+        assert img.dtype in [np.uint8, np.uint16], "The pixel type has to be uint8 or uint16"
         cdef:
             bytearray header
             int[4] sz = [img.shape[0], img.shape[1], img.shape[2], img.shape[3]]

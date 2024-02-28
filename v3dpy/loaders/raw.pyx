@@ -108,6 +108,8 @@ cdef class Raw:
         :param path: output image path of v3draw.
         :param img: the image array to save. 
         """
+        assert img.ndim == 4, "The image has to be 4D"
+        assert img.dtype in [np.uint8, np.uint16], "The pixel type has to be uint8 or uint16"
         cdef:
             short datatype
             list sz
