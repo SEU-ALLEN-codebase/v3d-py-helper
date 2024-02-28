@@ -24,6 +24,7 @@ jobs:
           python-version-file: .github/python-version.txt
 
       # ADJUST THIS: install all dependencies (including pdoc)
+      - run: sudo apt-get install libtiff6
       - run: pip install -e .
         env:
           GH_OPTION: true
