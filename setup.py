@@ -13,6 +13,7 @@ from setuptools.command.install import install
 
 class CustomInstallCommand(install):
     def run(self):
+        print('custom install')
         if os.getenv('GH_OPTION', 'false').lower() == 'true':
             print('Set args for Github pages')
             for ext in self.distribution.ext_modules:
