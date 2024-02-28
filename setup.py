@@ -8,6 +8,32 @@ import subprocess
 import os
 import shutil
 from setuptools.command.build_ext import build_ext
+from setuptools.command.install import install
+
+
+class CustomInstallCommand(install):
+    user_options = install.user_options + [
+        ('gh', None, 'A custom boolean option for the install command'),
+    ]
+
+    def initialize_options(self):
+        install.initialize_options(self)
+        self.gh = False
+
+    def finalize_options(self):
+        install.finalize_options(self)
+
+    def run(self):
+        if self.gh:
+            print('Set args for Github pages')
+            for ext in self.distribution.ext_modules:
+                if isinstance(ext, Extension) and ext.name == 'tiff':
+                    ext.extra_compile_args.extend([
+                        '-Djpeg=OFF', '-Dzlib=OFF', '-Dlerc=OFF', '-Dpixarlog=OFF',
+                        '-Dzstd=OFF', '-Dlzma=OFF', '-Dlzw=OFF', '-Dpackbits=OFF', '-Djbig=OFF', '-Dold-jpeg=OFF'
+                    ])
+
+        install.run(self)
 
 
 class MyBuildExtension(build_ext):
@@ -316,5 +342,6 @@ setup(
         # If the setup.py or setup.cfg are in a subfolder wrt the main CMakeLists.txt,
         # you can use the following custom command to create the source distribution.
         # sdist=cmake_build_extension.GitSdistFolder
+        install=CustomInstallCommand,
     ),
 )
