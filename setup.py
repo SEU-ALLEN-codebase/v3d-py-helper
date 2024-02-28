@@ -11,20 +11,6 @@ from setuptools.command.build_ext import build_ext
 from setuptools.command.install import install
 
 
-class CustomInstallCommand(install):
-    def run(self):
-        print('custom install')
-        if os.getenv('GH_OPTION', 'false').lower() == 'true':
-            print('Set args for Github pages')
-            for ext in self.distribution.ext_modules:
-                if isinstance(ext, cmake_build_extension.CMakeExtension) and ext.name == 'tiff':
-                    ext.cmake_configure_options.extend([
-                        '-Djpeg=OFF', '-Dzlib=OFF', '-Dlerc=OFF', '-Dpixarlog=OFF',
-                        '-Dzstd=OFF', '-Dlzma=OFF', '-Dlzw=OFF', '-Dpackbits=OFF', '-Djbig=OFF', '-Dold-jpeg=OFF'
-                    ])
-        install.run(self)
-
-
 class MyBuildExtension(build_ext):
     def initialize_options(self):
 
@@ -299,7 +285,7 @@ extensions = [
         'v3dpy.terafly.tiff_manage',
         ['v3dpy/terafly/tiff_manage.pyx'],
         include_dirs=['3rdparty/libtiff/include', np.get_include()],
-        library_dirs=['3rdparty/libtiff/lib'],
+        library_dirs=['3rdparty/libtiff/lib', '3rdparty/libtiff/lib64'],
         libraries=['tiff'],
         language='c++'
     ),
@@ -323,7 +309,11 @@ setup(
         'tiff',
         '3rdparty/libtiff',
         source_dir=str(Path('3rdparty/libtiff').absolute()),
-        cmake_configure_options=['-DBUILD_SHARED_LIBS=OFF']
+        cmake_configure_options=['-DBUILD_SHARED_LIBS=OFF'] + [] if os.getenv('GH_OPTION', 'false').lower() != 'true'
+        else [
+                        '-Djpeg=OFF', '-Dzlib=OFF', '-Dlerc=OFF', '-Dpixarlog=OFF',
+                        '-Dzstd=OFF', '-Dlzma=OFF', '-Dlzw=OFF', '-Dpackbits=OFF', '-Djbig=OFF', '-Dold-jpeg=OFF'
+                    ]
     )] + extensions,
     cmdclass=dict(
         # Enable the CMakeExtension entries defined above
@@ -331,6 +321,5 @@ setup(
         # If the setup.py or setup.cfg are in a subfolder wrt the main CMakeLists.txt,
         # you can use the following custom command to create the source distribution.
         # sdist=cmake_build_extension.GitSdistFolder
-        install=CustomInstallCommand,
     ),
 )
