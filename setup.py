@@ -12,6 +12,16 @@ from setuptools.command.install import install
 
 
 class CustomInstallCommand(install):
+    user_options = install.user_options + [
+        ('gh', None, 'A custom boolean option for the install command'),
+    ]
+
+    def initialize_options(self):
+        install.initialize_options(self)
+        self.gh = False
+
+    def finalize_options(self):
+        install.finalize_options(self)
 
     def run(self):
         gh_option = os.getenv('GH_OPTION', 'False').lower() == 'true'
