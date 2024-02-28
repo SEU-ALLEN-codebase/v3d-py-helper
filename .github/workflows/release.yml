@@ -1,0 +1,51 @@
+name: publish python package to PyPI
+
+# build the documentation whenever there are new commits on main
+on:
+  push:
+    # Alternative: only build for tags.
+    tags:
+      - 'v*'
+
+jobs:
+  # Build the documentation and upload the static HTML files as an artifact.
+  build-n-publish:
+    name: build and publish
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: [3.10, 3.11, 3.12]
+    environment:
+      name: pypi
+      url: https://pypi.org/project/v3d-py-helper/
+    permissions:
+      id-token: write
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: set up python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: install pypa/build
+      run: python -m pip install build
+
+    - name: build the wheel
+      run: python -m build --sdist --wheel . --outidr dist/
+
+    - name: publish to Test PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1.8.12
+      with:
+        password: $${{ secrets.TEST_PYPI_API_TOKEN }}
+        repository-url: https://test.pypi.org/legacy/
+        packages-dir: dist/
+
+    - name: publish to PYPI
+      uses: pypa/gh-action-pypi-publish@release/v1.8.12
+      with:
+        password: ${{ secrets.PYPI_API_TOKEN }}
+        packages-dir: dist/
+
+
