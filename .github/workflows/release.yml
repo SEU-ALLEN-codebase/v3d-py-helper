@@ -3,7 +3,10 @@ name: publish python package to PyPI
 on:
   release:
     types: [published]
-
+  push:
+    # Alternative: only build for tags.
+    tags:
+      - 'v*'
 jobs:
   # Build the documentation and upload the static HTML files as an artifact.
   build_wheels:
@@ -46,9 +49,7 @@ jobs:
   upload:
     needs: [build_wheels, build_sdist]
     runs-on: ubuntu-latest
-    environment:
-      name: pypi
-      url: https://pypi.org/project/v3d-py-helper/
+    environment: pypi
     permissions:
       id-token: write
     steps:
@@ -66,6 +67,7 @@ jobs:
         packages-dir: dist/
 
     - name: publish to PYPI
+      if: github.event_name == 'release' && github.event.action == 'published'
       uses: pypa/gh-action-pypi-publish@v1.8.12
       with:
         packages-dir: dist/
