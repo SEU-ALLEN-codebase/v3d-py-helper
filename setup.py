@@ -7,8 +7,8 @@ import platform
 import subprocess
 import os
 import shutil
+from importlib.util import find_spec
 from setuptools.command.build_ext import build_ext
-from setuptools.command.install import install
 
 
 class MyBuildExtension(build_ext):
@@ -123,7 +123,7 @@ class MyBuildExtension(build_ext):
             except ImportError:
                 raise ValueError(f"Failed to import '{pkg}'")
 
-            init = importlib.util.find_spec(pkg).origin
+            init = find_spec(pkg).origin
             cmake_build_extension.BuildExtension.extend_cmake_prefix_path(path=str(Path(init).parent))
 
         cmake_install_prefix = ext.install_prefix
@@ -214,7 +214,7 @@ class MyBuildExtension(build_ext):
 
         # Write content to the top-level __init__.py
         if ext.write_top_level_init is not None:
-            with open(file=cmake_install_prefix / "__init__.py", mode="w") as f:
+            with open(file=Path(cmake_install_prefix) / "__init__.py", mode="w") as f:
                 f.write(ext.write_top_level_init)
 
         # Write content to the bin/__main__.py magic file to expose binaries
