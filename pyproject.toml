@@ -2,6 +2,9 @@
 requires = ["setuptools", "wheel", "Cython", "numpy", "setuptools-scm", "cmake_build_extension"]
 build-backend = "setuptools.build_meta"
 
+[tool.setuptools]
+packages = ['v3dpy']
+
 [project]
 name = "v3d-py-helper"
 authors = [
