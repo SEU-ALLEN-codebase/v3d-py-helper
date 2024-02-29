@@ -60,13 +60,13 @@ jobs:
         merge-multiple: true
 
     - name: publish to Test PyPI
-      uses: pypa/gh-action-pypi-publish@v1
+      uses: pypa/gh-action-pypi-publish@v1.8.12
       with:
         repository-url: https://test.pypi.org/legacy/
         packages-dir: dist/
 
     - name: publish to PYPI
-      uses: pypa/gh-action-pypi-publish@v1
+      uses: pypa/gh-action-pypi-publish@v1.8.12
       with:
         packages-dir: dist/
 
