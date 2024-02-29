@@ -31,7 +31,12 @@ jobs:
       # ADJUST THIS: build your documentation into docs/.
       # We use a custom build script for pdoc itself, ideally you just run `pdoc -o docs/ ...` here.
 #      - run: git clone https://github.com/oddlama/pdoc-bulma-theme
+      - name: get absolute path of the project
+        id: abs_path
+        run: echo "::set-output name=path::$(pwd)"
       - run: pdoc v3dpy -o docs/ --logo "https://avatars.githubusercontent.com/u/11728584?s=200&v=4"
+        env:
+          LD_LIBRARY_PATH: ${{ env.LD_LIBRARY_PATH }}:${{ steps.abs_path.outputs.path }}/3rdparty/libtiff/lib:${{ steps.abs_path.outputs.path }}/3rdparty/libtiff/lib64
 
       - uses: actions/upload-pages-artifact@v1
         with:
