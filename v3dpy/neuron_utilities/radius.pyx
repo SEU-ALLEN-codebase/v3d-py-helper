@@ -24,7 +24,7 @@ cpdef object neuron_radius(object tree, cnp.ndarray img, bint is2d, double bkg_t
 @cython.wraparound(False)
 @cython.cdivision(True)
 cdef double marker_radius_hanchuan(float x, float y, float z, cnp.ndarray[cnp.float32_t, ndim=3] img, double thr):
-    cdef long long sz0 = img.shape[0], sz1 = img.shape[1], sz2 = img.shape[2], i, j, k
+    cdef long long sz0 = img.shape[2], sz1 = img.shape[1], sz2 = img.shape[0], i, j, k
     cdef double max_r = sz0 / 2, total_num, background_num, ir, dz, dy, dx, zlower, zupper, r
     max_r = min(max_r, sz1 / 2)
     max_r = min(max_r, sz2 / 2)
@@ -47,7 +47,7 @@ cdef double marker_radius_hanchuan(float x, float y, float z, cnp.ndarray[cnp.fl
                         if j < 0 or j >= sz0:
                             return ir
                         k = <long long>(z + dz)
-                        if k < 0 or k >= sz0:
+                        if k < 0 or k >= sz1:
                             return ir
                         if img[k, j, i] <= thr:
                             background_num += 1
@@ -60,7 +60,7 @@ cdef double marker_radius_hanchuan(float x, float y, float z, cnp.ndarray[cnp.fl
 @cython.wraparound(False)
 @cython.cdivision(True)
 cdef double marker_radius_hanchuan_xy(float x, float y, float z, cnp.ndarray[cnp.float32_t, ndim=3] img, double thr):
-    cdef long long sz0 = img.shape[0], sz1 = img.shape[1], i, j, k = <long long>z
+    cdef long long sz0 = img.shape[2], sz1 = img.shape[1], i, j, k = <long long>z
     cdef double max_r = sz0 / 2, total_num, background_num, ir, dy, dx, r
     max_r = min(max_r, sz1 / 2)
 
@@ -76,7 +76,7 @@ cdef double marker_radius_hanchuan_xy(float x, float y, float z, cnp.ndarray[cnp
                     if i < 0 or i >= sz0:
                         return ir
                     j = <long long>(y + dy)
-                    if j < 0 or j >= sz0:
+                    if j < 0 or j >= sz1:
                         return ir
                     if img[k, j, i] <= thr:
                         background_num += 1
