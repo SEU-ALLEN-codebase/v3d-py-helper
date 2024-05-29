@@ -1,0 +1,3 @@
+The test of later versions of v3dpy has to be done by installing the package from pypi (you can use pypi test).
+Local compiling by build ext_module works no more because the static library of tiff can't be used properly, the
+exact cause is unclear.

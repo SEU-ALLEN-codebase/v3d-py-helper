@@ -6,7 +6,7 @@ import cython
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-cpdef object neuron_radius(object tree,  img, bint is2d, double bkg_thr):
+cpdef object neuron_radius(object tree, cnp.ndarray img, bint is2d, double bkg_thr):
     assert img.ndim == 3
     tree = [list(t) for t in tree]
     cdef float x, y, z, r
@@ -14,9 +14,9 @@ cpdef object neuron_radius(object tree,  img, bint is2d, double bkg_thr):
     for t in tree:
         x, y, z = t[2:5]
         if is2d:
-            t[5] = marker_radius_hanchuan_xy(x, y, z, img, bkg_thr)
+            t[5] = marker_radius_hanchuan_xy(x, y, z, img_, bkg_thr)
         else:
-            t[5] = marker_radius_hanchuan(x, y, z, img, bkg_thr)
+            t[5] = marker_radius_hanchuan(x, y, z, img_, bkg_thr)
     return [tuple(t) for t in tree]
 
 
