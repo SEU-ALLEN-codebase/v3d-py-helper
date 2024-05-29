@@ -78,7 +78,7 @@ cdef double marker_radius_hanchuan_xy(float x, float y, float z, cnp.ndarray[cnp
                     j = <long long>(y + dy)
                     if j < 0 or j >= sz0:
                         return ir
-                    if img[z, j, i] <= thr:
+                    if img[k, j, i] <= thr:
                         background_num += 1
                         if background_num > 0.001:
                             return ir
