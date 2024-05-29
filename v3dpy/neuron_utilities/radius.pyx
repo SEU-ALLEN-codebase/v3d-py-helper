@@ -60,7 +60,7 @@ cdef double marker_radius_hanchuan(float x, float y, float z, cnp.ndarray[cnp.fl
 @cython.wraparound(False)
 @cython.cdivision(True)
 cdef double marker_radius_hanchuan_xy(float x, float y, float z, cnp.ndarray[cnp.float32_t, ndim=3] img, double thr):
-    cdef long long sz0 = img.shape[0], sz1 = img.shape[1], i, j, k = z
+    cdef long long sz0 = img.shape[0], sz1 = img.shape[1], i, j, k = <long long>z
     cdef double max_r = sz0 / 2, total_num, background_num, ir, dy, dx, r
     max_r = min(max_r, sz1 / 2)
 
