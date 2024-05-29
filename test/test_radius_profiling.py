@@ -10,7 +10,7 @@ class MyTestCase(unittest.TestCase):
         img = r"D:\rectify\my\15257_13263_25518_2294.v3dpbd"
         img = PBD().load(img)[0]
         swc = swc_handler.parse_swc(swc)
-        res = radius.neuron_radius(swc, img, True, -1)
+        res = radius.neuron_radius(swc, img, True, 30)
         swc_handler.write_swc(res, 'profiled.swc')
 
 

@@ -51,7 +51,7 @@ cdef double marker_radius_hanchuan(float x, float y, float z, cnp.ndarray[cnp.fl
                             return ir
                         if img[k, j, i] <= thr:
                             background_num += 1
-                            if background_num > 0.001:
+                            if background_num / total_num > 0.001:
                                 return ir
     return ir
 
@@ -80,6 +80,6 @@ cdef double marker_radius_hanchuan_xy(float x, float y, float z, cnp.ndarray[cnp
                         return ir
                     if img[k, j, i] <= thr:
                         background_num += 1
-                        if background_num > 0.001:
+                        if background_num / total_num > 0.001:
                             return ir
     return ir
