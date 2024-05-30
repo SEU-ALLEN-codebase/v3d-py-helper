@@ -270,8 +270,8 @@ class MyBuildExtension(build_ext):
 
 extensions = [
     Extension(
-        'v3dpy.neuron_utilities.radius',
-        ['v3dpy/neuron_utilities/radius.pyx'],
+        'v3dpy.neuron_utilities.profiling',
+        ['v3dpy/neuron_utilities/profiling.pyx'],
         include_dirs=[np.get_include()],
         language='c++'
     ),
